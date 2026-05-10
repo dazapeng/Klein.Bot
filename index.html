@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KleinBot - AI 自主编码代理 Klein.Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'nuxt-green': '#00DC82',
+                        'dark-bg': '#0f0f0f',
+                        'dark-surface': '#18181b',
+                        'dark-card': '#27272a',
+                        'dark-border': '#3f3f46',
+                        'text-primary': '#fafafa',
+                        'text-secondary': '#a1a1aa',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            background-color: #0f0f0f;
+            color: #fafafa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #00DC82 0%, #00c475 50%, #00b368 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .gradient-border {
+            position: relative;
+        }
+        .gradient-border::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, #00DC82, transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 220, 130, 0.1);
+        }
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .nav-link {
+            position: relative;
+            color: #a1a1aa;
+            transition: color 0.3s ease;
+        }
+        .nav-link:hover { color: #fafafa; }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #00DC82;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after { width: 100%; }
+        .btn-primary {
+            background: linear-gradient(135deg, #00DC82, #00c475);
+            color: #0f0f0f;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 220, 130, 0.3);
+        }
+        .btn-secondary {
+            border: 1px solid #3f3f46;
+            color: #fafafa;
+            padding: 12px 24px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-secondary:hover {
+            border-color: #00DC82;
+            color: #00DC82;
+            transform: translateY(-2px);
+        }
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(0, 220, 130, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        .faq-item {
+            border-bottom: 1px solid #27272a;
+        }
+        .faq-question {
+            cursor: pointer;
+            padding: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #fafafa;
+            font-weight: 500;
+        }
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            color: #a1a1aa;
+        }
+        .faq-item.active .faq-answer {
+            max-height: 500px;
+            padding-bottom: 20px;
+        }
+        .faq-toggle {
+            transition: transform 0.3s ease;
+            color: #00DC82;
+            font-size: 20px;
+        }
+        .faq-item.active .faq-toggle {
+            transform: rotate(45deg);
+        }
+        .code-block {
+            background: #18181b;
+            border: 1px solid #27272a;
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+        }
+        .model-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #27272a;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #a1a1aa;
+            margin: 4px;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .model-badge:hover {
+            border-color: #00DC82;
+            color: #00DC82;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #27272a;
+        }
+        .comparison-table th {
+            background: #18181b;
+            color: #00DC82;
+            font-weight: 600;
+        }
+        .comparison-table tr:hover td {
+            background: rgba(0, 220, 130, 0.05);
+        }
+        .check-icon { color: #00DC82; }
+        .x-icon { color: #ef4444; }
+
+        @media (max-width: 768px) {
+            .hero-title { font-size: 2.5rem; }
+            .section-title { font-size: 2rem; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f0f0f; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+        /* Glow effect */
+        .glow {
+            box-shadow: 0 0 40px rgba(0, 220, 130, 0.15);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 transition-all duration-300" style="background: rgba(15, 15, 15, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid transparent;">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="#hero" class="flex items-center gap-3">
+                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #00DC82, #00c475); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #0f0f0f; font-size: 18px;">K</div>
+                <span style="font-weight: 700; font-size: 20px; color: #fafafa;">Klein.Bot</span>
+            </a>
+            <div class="hidden md:flex items-center gap-8">
+                <a href="#features" class="nav-link">功能特性</a>
+                <a href="#versions" class="nav-link">版本介绍</a>
+                <a href="#comparison" class="nav-link">对比优势</a>
+                <a href="#models" class="nav-link">支持模型</a>
+                <a href="#mcp" class="nav-link">MCP 扩展</a>
+                <a href="#quickstart" class="nav-link">快速开始</a>
+                <a href="#faq" class="nav-link">FAQ</a>
+            </div>
+            <a href="https://Klein.Bot" target="_blank" class="btn-primary" style="padding: 8px 16px; font-size: 14px;">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                GitHub
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="min-h-screen flex items-center justify-center relative overflow-hidden" style="padding-top: 80px;">
+        <div style="position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(0, 220, 130, 0.08) 0%, transparent 70%);"></div>
+        <div style="position: absolute; top: 20%, left: 10%; width: 300px; height: 300px; background: rgba(0, 220, 130, 0.05); border-radius: 50%; filter: blur(100px);"></div>
+        <div style="position: absolute; bottom: 20%, right: 10%; width: 400px; height: 400px; background: rgba(0, 220, 130, 0.03); border-radius: 50%; filter: blur(120px);"></div>
+
+        <div class="max-w-7xl mx-auto px-6 text-center relative z-10 fade-in">
+            <div style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(0, 220, 130, 0.1); border: 1px solid rgba(0, 220, 130, 0.2); border-radius: 100px; margin-bottom: 24px; font-size: 14px; color: #00DC82;">
+                <span style="width: 8px; height: 8px; background: #00DC82; border-radius: 50%; display: inline-block; animation: pulse 2s infinite;"></span>
+                AI 自主编码代理 · 支持 30+ 模型
+            </div>
+            <h1 class="hero-title gradient-text" style="font-size: 4rem; font-weight: 800; line-height: 1.1; margin-bottom: 24px; letter-spacing: -0.02em;">
+                Klein.Bot
+            </h1>
+            <p style="font-size: 1.5rem; color: #a1a1aa; margin-bottom: 16px; font-weight: 500;">AI 自主编码代理</p>
+            <p style="font-size: 1.125rem; color: #71717a; max-width: 600px; margin: 0 auto 40px; line-height: 1.6;">
+                在 VS Code 中和终端里，让 AI 帮你写代码、修 Bug、执行命令
+            </p>
+            <div class="flex items-center justify-center gap-4 flex-wrap">
+                <a href="#quickstart" class="btn-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    查看文档
+                </a>
+                <a href="https://github.com/kleinbot/kleinbot" target="_blank" class="btn-secondary">
+                    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    Star on GitHub
+                    <span style="background: #27272a; padding: 2px 8px; border-radius: 4px; font-size: 12px; color: #fafafa;">2.5k</span>
+                </a>
+            </div>
+
+            <!-- Hero Image Placeholder -->
+            <div style="margin-top: 60px; position: relative;">
+                <div style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+                    <div style="background: #27272a; padding: 12px 16px; display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 12px; height: 12px; border-radius: 50%; background: #ef4444;"></div>
+                        <div style="width: 12px; height: 12px; border-radius: 50%; background: #eab308;"></div>
+                        <div style="width: 12px; height: 12px; border-radius: 50%; background: #22c55e;"></div>
+                        <div style="margin-left: 16px; background: #18181b; border-radius: 6px; padding: 4px 12px; font-size: 12px; color: #a1a1aa; flex: 1;">KleinBot - VS Code</div>
+                    </div>
+                    <div style="padding: 24px; text-align: left;">
+                        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                            <div style="background: rgba(0, 220, 130, 0.1); color: #00DC82; padding: 4px 12px; border-radius: 4px; font-size: 13px;">KleinBot</div>
+                            <div style="color: #a1a1aa; padding: 4px 12px; font-size: 13px;">用户</div>
+                        </div>
+                        <div style="color: #00DC82; margin-bottom: 8px; font-size: 14px;">🤖 KleinBot:</div>
+                        <div style="color: #fafafa; line-height: 1.6; font-size: 14px;">
+                            我已经分析了您的代码库，发现 <span style="color: #ef4444;">3 个潜在问题</span>。<br>
+                            正在为您 <span style="color: #00DC82;">修复 Bug</span> 并执行测试...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="section-title gradient-text" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">核心功能特性</h2>
+                <p style="font-size: 1.125rem; color: #a1a1aa; max-width: 600px; margin: 0 auto;">KleinBot 提供全方位的 AI 辅助编程能力，让开发更高效</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Feature 1 -->
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#00DC82'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#27272a'; this.style.transform='translateY(0)'">
+                    <div class="feature-icon">💬</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; color: #fafafa;">智能对话</h3>
+                    <p style="color: #a1a1aa; line-height: 1.6;">自然语言理解开发需求，智能对话式交互，让 AI 真正理解你的意图。</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#00DC82'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#27272a'; this.style.transform='translateY(0)'">
+                    <div class="feature-icon">📁</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; color: #fafafa;">文件操作</h3>
+                    <p style="color: #a1a1aa; line-height: 1.6;">自动读取、编辑、创建文件，智能理解项目结构，精准定位修改位置。</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#00DC82'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#27272a'; this.style.transform='translateY(0)'">
+                    <div class="feature-icon">⚡</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; color: #fafafa;">终端命令</h3>
+                    <p style="color: #a1a1aa; line-height: 1.6;">自主执行终端命令，运行测试、安装依赖、构建项目，全自动开发流程。</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#00DC82'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#27272a'; this.style.transform='translateY(0)'">
+                    <div class="feature-icon">🌐</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; color: #fafafa;">浏览器测试</h3>
+                    <p style="color: #a1a1aa; line-height: 1.6;">集成浏览器自动化，自动进行 Web 应用测试和 UI 验证。</p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#00DC82'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#27272a'; this.style.transform='translateY(0)'">
+                    <div class="feature-icon">🔄</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; color: #fafafa;">检查点回退</h3>
+                    <p style="color: #a1a1aa; line-height: 1.6;">自动保存检查点，一键回退到任意状态，让实验和重构无后顾之忧。</p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#00DC82'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#27272a'; this.style.transform='translateY(0)'">
+                    <div class="feature-icon">🔌</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; color: #fafafa;">MCP 扩展</h3>
+                    <p style="color: #a1a1aa; line-height: 1.6;">支持 Model Context Protocol，可扩展集成各类工具和数据源，无限可能。</p>
+                </div>
+            </div>
+
+            <!-- More Features -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#00DC82'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#27272a'; this.style.transform='translateY(0)'">
+                    <div class="feature-icon">📋</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; color: #fafafa;">任务管理</h3>
+                    <p style="color: #a1a1aa; line-height: 1.6;">内置任务管理系统，自动分解复杂任务，跟踪进度，有序执行。</p>
+                </div>
+
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#00DC82'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#27272a'; this.style.transform='translateY(0)'">
+                    <div class="feature-icon">📝</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; color: #fafafa;">自定义规则</h3>
+                    <p style="color: #a1a1aa; line-height: 1.6;">通过 .kleinbotrules 文件自定义 AI 行为规则，让 AI 更懂你的项目。</p>
+                </div>
+
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 24px; transition: all 0.3s ease;" onmouseover="this.style.borderColor='#00DC82'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='#27272a'; this.style.transform='translateY(0)'">
+                    <div class="feature-icon">🎯</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; color: #fafafa;">Plan & Act 模式</h3>
+                    <p style="color: #a1a1aa; line-height: 1.6;">独特的双模式工作流，先规划后执行，让 AI 操作更可控、更透明。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Versions Section -->
+    <section id="versions" style="background: #18181b; padding: 80px 24px;">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="section-title gradient-text" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">双版本，随心选择</h2>
+                <p style="font-size: 1.125rem; color: #a1a1aa; max-width: 600px; margin: 0 auto;">无论你喜欢图形界面还是命令行，KleinBot 都能满足你</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- VS Code Extension -->
+                <div class="fade-in" style="background: #0f0f0f; border: 2px solid #27272a; border-radius: 16px; padding: 32px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 0; right: 0; background: linear-gradient(135deg, #00DC82, #00c475); color: #0f0f0f; padding: 6px 16px; font-size: 12px; font-weight: 600; border-bottom-left-radius: 12px;">推荐</div>
+                    <div style="width: 64px; height: 64px; background: rgba(0, 220, 130, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 20px;">💻</div>
+                    <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; color: #fafafa;">VS Code 扩展版</h3>
+                    <p style="color: #a1a1aa; margin-bottom: 20px; line-height: 1.6;">提供完整的图形化界面，适合日常开发使用。支持 VS Code、Cursor、VSCodium、Windsurf 等编辑器。</p>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0; color: #fafafa; display: flex; align-items: center; gap: 8px;"><span class="check-icon">✓</span> 图形化聊天界面</li>
+                        <li style="padding: 8px 0; color: #fafafa; display: flex; align-items: center; gap: 8px;"><span class="check-icon">✓</span> 文件树可视化管理</li>
+                        <li style="padding: 8px 0; color: #fafafa; display: flex; align-items: center; gap: 8px;"><span class="check-icon">✓</span> 检查点可视化回退</li>
+                        <li style="padding: 8px 0; color: #fafafa; display: flex; align-items: center; gap: 8px;"><span class="check-icon">✓</span> 实时代码高亮预览</li>
+                    </ul>
+                    <div class="code-block" style="margin-top: 20px;">
+                        <code style="color: #00DC82;">code --install-extension kleinbot.kleinbot</code>
+                    </div>
+                </div>
+
+                <!-- CLI Version -->
+                <div class="fade-in" style="background: #0f0f0f; border: 2px solid #27272a; border-radius: 16px; padding: 32px; position: relative; overflow: hidden;">
+                    <div style="width: 64px; height: 64px; background: rgba(0, 220, 130, 0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 20px;">💻</div>
+                    <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; color: #fafafa;">CLI 命令行版</h3>
+                    <p style="color: #a1a1aa; margin-bottom: 20px; line-height: 1.6;">纯终端操作，适合自动化流程和 CI/CD 集成。轻量级，无 GUI 依赖。</p>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 8px 0; color: #fafafa; display: flex; align-items: center; gap: 8px;"><span class="check-icon">✓</span> 终端原生体验</li>
+                        <li style="padding: 8px 0; color: #fafafa; display: flex; align-items: center; gap: 8px;"><span class="check-icon">✓</span> CI/CD 集成友好</li>
+                        <li style="padding: 8px 0; color: #fafafa; display: flex; align-items: center; gap: 8px;"><span class="check-icon">✓</span> 自动化脚本支持</li>
+                        <li style="padding: 8px 0; color: #fafafa; display: flex; align-items: center; gap: 8px;"><span class="check-icon">✓</span> 远程服务器适用</li>
+                    </ul>
+                    <div class="code-block" style="margin-top: 20px;">
+                        <code style="color: #00DC82;">npm install -g kleinbot</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Section -->
+    <section id="comparison" class="py-20 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="section-title gradient-text" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">为什么选择 KleinBot？</h2>
+                <p style="font-size: 1.125rem; color: #a1a1aa; max-width: 600px; margin: 0 auto;">对比主流 AI 编码工具，KleinBot 在自主性和扩展性上更胜一筹</p>
+            </div>
+
+            <div class="fade-in" style="overflow-x: auto;">
+                <table class="comparison-table" style="min-width: 800px;">
+                    <thead>
+                        <tr>
+                            <th style="border-radius: 8px 0 0 0;">功能特性</th>
+                            <th>KleinBot</th>
+                            <th>GitHub Copilot</th>
+                            <th>Cursor</th>
+                            <th style="border-radius: 0 8px 0 0;">Cline/Claude Code</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="color: #fafafa; font-weight: 500;">自主执行命令</td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="check-icon">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td style="color: #fafafa; font-weight: 500;">检查点回退</td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="check-icon">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td style="color: #fafafa; font-weight: 500;">MCP 扩展支持</td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="check-icon">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td style="color: #fafafa; font-weight: 500;">30+ 模型支持</td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span> (仅 OpenAI)</td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span> (仅 Anthropic)</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #fafafa; font-weight: 500;">Plan & Act 双模式</td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td style="color: #fafafa; font-weight: 500;">CLI + GUI 双版本</td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="x-icon">✗</span> (仅 GUI)</td>
+                            <td><span class="check-icon">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td style="color: #fafafa; font-weight: 500;">开源免费</td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="check-icon">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td style="color: #fafafa; font-weight: 500;">自定义规则 (.kleinbotrules)</td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                            <td><span class="check-icon">✓</span></td>
+                            <td><span class="x-icon">✗</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Models Section -->
+    <section id="models" style="background: #18181b; padding: 80px 24px;">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="section-title gradient-text" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">支持 30+ AI 模型</h2>
+                <p style="font-size: 1.125rem; color: #a1a1aa; max-width: 600px; margin: 0 auto;">自由选择最适合的 AI 模型，支持所有主流 AI 提供商</p>
+            </div>
+
+            <div class="fade-in" style="background: #0f0f0f; border: 1px solid #27272a; border-radius: 16px; padding: 32px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+                    <span class="model-badge">Anthropic Claude 3.5 Sonnet</span>
+                    <span class="model-badge">Anthropic Claude 3 Opus</span>
+                    <span class="model-badge">Anthropic Claude 3 Haiku</span>
+                    <span class="model-badge">OpenAI GPT-4o</span>
+                    <span class="model-badge">OpenAI GPT-4 Turbo</span>
+                    <span class="model-badge">OpenAI o1-preview</span>
+                    <span class="model-badge">DeepSeek V3</span>
+                    <span class="model-badge">DeepSeek R1</span>
+                    <span class="model-badge">Google Gemini 2.0 Flash</span>
+                    <span class="model-badge">Google Gemini Pro</span>
+                    <span class="model-badge">Meta Llama 3.3</span>
+                    <span class="model-badge">Mistral Large 2</span>
+                    <span class="model-badge">Qwen 2.5 Max</span>
+                    <span class="model-badge">Baichuan 4</span>
+                    <span class="model-badge">ChatGLM 4</span>
+                    <span class="model-badge">Ollama (本地模型)</span>
+                    <span class="model-badge">LM Studio</span>
+                    <span class="model-badge">Groq LPU</span>
+                    <span class="model-badge">Together AI</span>
+                    <span class="model-badge">OpenRouter</span>
+                    <span class="model-badge">Azure OpenAI</span>
+                    <span class="model-badge">AWS Bedrock</span>
+                    <span class="model-badge">Google Vertex AI</span>
+                    <span class="model-badge">Cohere Command R+</span>
+                    <span class="model-badge">Perplexity Sonar</span>
+                    <span class="model-badge">xAI Grok</span>
+                    <span class="model-badge">Cloudflare Workers AI</span>
+                    <span class="model-badge">Replicate</span>
+                    <span class="model-badge">Hugging Face</span>
+                    <span class="model-badge">Novita AI</span>
+                    <span class="model-badge">SiliconFlow</span>
+                    <span class="model-badge">Sparkdesk (讯飞)</span>
+                    <span class="model-badge">Wenxin (百度)</span>
+                    <span class="model-badge">Tongyi (阿里)</span>
+                </div>
+                <p style="text-align: center; color: #71717a; margin-top: 24px; font-size: 14px;">... 以及更多模型持续添加中</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- MCP Section -->
+    <section id="mcp" class="py-20 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="section-title gradient-text" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">MCP 扩展能力</h2>
+                <p style="font-size: 1.125rem; color: #a1a1aa; max-width: 600px; margin: 0 auto;">通过 Model Context Protocol 扩展 KleinBot 的能力边界</p>
+            </div>
+
+            <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 16px; padding: 32px; margin-bottom: 32px;">
+                <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 16px; color: #fafafa;">什么是 MCP？</h3>
+                <p style="color: #a1a1aa; line-height: 1.8; margin-bottom: 16px;">
+                    <strong style="color: #fafafa;">Model Context Protocol (MCP)</strong> 是一个开放协议，允许 AI 应用与外部工具和数据源进行标准化交互。通过 MCP，KleinBot 可以：
+                </p>
+                <ul style="color: #a1a1aa; line-height: 2; padding-left: 20px;">
+                    <li>🔗 连接本地文件和数据库</li>
+                    <li>🌐 访问 Web API 和在线服务</li>
+                    <li>📊 集成数据分析工具</li>
+                    <li>🤖 调用其他 AI 模型和工具</li>
+                    <li>📝 管理项目文档和知识库</li>
+                </ul>
+            </div>
+
+            <h3 class="fade-in" style="font-size: 1.25rem; font-weight: 600; margin-bottom: 20px; color: #fafafa; text-align: center;">常用 MCP 服务器</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: rgba(0, 220, 130, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">📂</div>
+                    <div>
+                        <h4 style="font-weight: 600; color: #fafafa; margin-bottom: 4px;">Filesystem</h4>
+                        <p style="font-size: 13px; color: #a1a1aa;">安全的文件系统操作</p>
+                    </div>
+                </div>
+
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: rgba(0, 220, 130, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">🐙</div>
+                    <div>
+                        <h4 style="font-weight: 600; color: #fafafa; margin-bottom: 4px;">GitHub</h4>
+                        <p style="font-size: 13px; color: #a1a1aa;">仓库管理、PR、Issue</p>
+                    </div>
+                </div>
+
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: rgba(0, 220, 130, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">🐘</div>
+                    <div>
+                        <h4 style="font-weight: 600; color: #fafafa; margin-bottom: 4px;">PostgreSQL</h4>
+                        <p style="font-size: 13px; color: #a1a1aa;">数据库查询和管理</p>
+                    </div>
+                </div>
+
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: rgba(0, 220, 130, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">🔍</div>
+                    <div>
+                        <h4 style="font-weight: 600; color: #fafafa; margin-bottom: 4px;">Google Search</h4>
+                        <p style="font-size: 13px; color: #a1a1aa;">网页搜索和资讯获取</p>
+                    </div>
+                </div>
+
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: rgba(0, 220, 130, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">🗺️</div>
+                    <div>
+                        <h4 style="font-weight: 600; color: #fafafa; margin-bottom: 4px;">Google Maps</h4>
+                        <p style="font-size: 13px; color: #a1a1aa;">地图和位置服务</p>
+                    </div>
+                </div>
+
+                <div class="fade-in" style="background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: rgba(0, 220, 130, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">📚</div>
+                    <div>
+                        <h4 style="font-weight: 600; color: #fafafa; margin-bottom: 4px;">Memory</h4>
+                        <p style="font-size: 13px; color: #a1a1aa;">知识图谱和记忆管理</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section id="quickstart" style="background: #18181b; padding: 80px 24px;">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="section-title gradient-text" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">快速开始</h2>
+                <p style="font-size: 1.125rem; color: #a1a1aa; max-width: 600px; margin: 0 auto;">只需几分钟，即可开始使用 KleinBot</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- VSIX Install -->
+                <div class="fade-in" style="background: #0f0f0f; border: 1px solid #27272a; border-radius: 16px; padding: 32px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #00DC82, #00c475); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #0f0f0f; font-weight: bold;">1</div>
+                        <h3 style="font-size: 1.25rem; font-weight: 600; color: #fafafa;">安装 VS Code 扩展</h3>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <p style="color: #a1a1aa; margin-bottom: 12px; font-size: 14px;">方法一：从 VS Code 市场安装</p>
+                        <div class="code-block">
+                            <code style="color: #00DC82;">code --install-extension kleinbot.kleinbot</code>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <p style="color: #a1a1aa; margin-bottom: 12px; font-size: 14px;">方法二：下载 VSIX 文件手动安装</p>
+                        <a href="#" class="btn-primary" style="font-size: 14px; padding: 10px 20px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            下载 VSIX
+                        </a>
+                    </div>
+                    <div>
+                        <p style="color: #a1a1aa; margin-bottom: 12px; font-size: 14px;">方法三：从 GitHub Releases 安装</p>
+                        <a href="https://github.com/kleinbot/kleinbot/releases" target="_blank" class="btn-secondary" style="font-size: 14px; padding: 10px 20px;">查看 Releases →</a>
+                    </div>
+                </div>
+
+                <!-- CLI Install -->
+                <div class="fade-in" style="background: #0f0f0f; border: 1px solid #27272a; border-radius: 16px; padding: 32px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #00DC82, #00c475); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #0f0f0f; font-weight: bold;">2</div>
+                        <h3 style="font-size: 1.25rem; font-weight: 600; color: #fafafa;">安装 CLI 版本</h3>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <p style="color: #a1a1aa; margin-bottom: 12px; font-size: 14px;">使用 npm 全局安装</p>
+                        <div class="code-block">
+                            <code style="color: #00DC82;">npm install -g kleinbot</code>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <p style="color: #a1a1aa; margin-bottom: 12px; font-size: 14px;">验证安装</p>
+                        <div class="code-block">
+                            <code style="color: #00DC82;">kleinbot --version</code>
+                        </div>
+                    </div>
+                    <div>
+                        <p style="color: #a1a1aa; margin-bottom: 12px; font-size: 14px;">启动 KleinBot</p>
+                        <div class="code-block">
+                            <code style="color: #00DC82;">kleinbot</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configure API Key -->
+            <div class="fade-in" style="background: #0f0f0f; border: 1px solid #27272a; border-radius: 16px; padding: 32px; margin-top: 32px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #00DC82, #00c475); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #0f0f0f; font-weight: bold;">3</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; color: #fafafa;">配置 API Key</h3>
+                </div>
+                <p style="color: #a1a1aa; margin-bottom: 16px;">在 KleinBot 中配置您选择的 AI 模型 API Key，支持环境变量或配置文件方式。</p>
+                <div class="code-block">
+                    <span style="color: #a1a1aa;"># </span><span style="color: #a1a1aa;">在 .env 文件中配置</span><br>
+                    <span style="color: #fafafa;">ANTHROPIC_API_KEY</span>=<span style="color: #a1a1aa;">your_api_key_here</span><br>
+                    <span style="color: #fafafa;">OPENAI_API_KEY</span>=<span style="color: #a1a1aa;">your_api_key_here</span><br>
+                    <span style="color: #fafafa;">DEEPSEEK_API_KEY</span>=<span style="color: #a1a1aa;">your_api_key_here</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="py-20 px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-16 fade-in">
+                <h2 class="section-title gradient-text" style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">常见问题</h2>
+                <p style="font-size: 1.125rem; color: #a1a1aa;">找不到答案？<a href="#" style="color: #00DC82;">加入我们的 Discord 社区</a></p>
+            </div>
+
+            <div class="fade-in">
+                <!-- FAQ Item 1 -->
+                <div class="faq-item" onclick="this.classList.toggle('active')">
+                    <div class="faq-question">
+                        <span>KleinBot 是免费的吗？</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        KleinBot 本身是开源免费的。您只需要支付使用的 AI 模型 API 费用（如 Anthropic Claude、OpenAI 等）。也支持使用免费的本地模型（通过 Ollama）。
+                    </div>
+                </div>
+
+                <!-- FAQ Item 2 -->
+                <div class="faq-item" onclick="this.classList.toggle('active')">
+                    <div class="faq-question">
+                        <span>KleinBot 支持哪些编辑器？</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        VS Code 扩展版支持 VS Code、Cursor、VSCodium、Windsurf 等基于 VS Code 的编辑器。CLI 版本可以在任何终端中使用，不受编辑器限制。
+                    </div>
+                </div>
+
+                <!-- FAQ Item 3 -->
+                <div class="faq-item" onclick="this.classList.toggle('active')">
+                    <div class="faq-question">
+                        <span>如何保证代码安全性？</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        KleinBot 的所有操作都在本地进行，代码不会上传到任何第三方服务器。您使用的 AI 模型 API 调用遵循对应服务商的数据处理政策。检查点功能让您可以随时回退到之前的状态。
+                    </div>
+                </div>
+
+                <!-- FAQ Item 4 -->
+                <div class="faq-item" onclick="this.classList.toggle('active')">
+                    <div class="faq-question">
+                        <span>Plan & Act 模式是什么？</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        Plan 模式下，KleinBot 会先分析任务并制定详细的执行计划，供您审核。Act 模式下，KleinBot 会按照计划自动执行操作。这种双模式设计让 AI 操作更可控、更透明，避免意外修改。
+                    </div>
+                </div>
+
+                <!-- FAQ Item 5 -->
+                <div class="faq-item" onclick="this.classList.toggle('active')">
+                    <div class="faq-question">
+                        <span>如何使用本地模型（如 Ollama）？</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        首先安装 Ollama 并下载模型（如 llama3.3），然后在 KleinBot 设置中选择 Ollama 作为模型提供商，配置本地 API 地址（默认 http://localhost:11434）即可使用。
+                    </div>
+                </div>
+
+                <!-- FAQ Item 6 -->
+                <div class="faq-item" onclick="this.classList.toggle('active')">
+                    <div class="faq-question">
+                        <span>KleinBot 和 Cline 有什么区别？</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        KleinBot 提供了独特的 Plan & Act 双模式、检查点回退系统、以及更丰富的模型支持（30+ vs 仅 Anthropic）。同时 Klein.Bot 提供 CLI 版本，更适合自动化和 CI/CD 场景。两者都是优秀的开源项目，可以根据需求选择。
+                    </div>
+                </div>
+
+                <!-- FAQ Item 7 -->
+                <div class="faq-item" onclick="this.classList.toggle('active')">
+                    <div class="faq-question">
+                        <span>如何参与 KleinBot 开发？</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        欢迎在 GitHub 上提交 Issue 和 Pull Request！我们欢迎各种形式的贡献：功能建议、Bug 报告、代码贡献、文档改进等。请查看 GitHub 仓库的 CONTRIBUTING.md 了解详情。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section style="background: linear-gradient(135deg, rgba(0, 220, 130, 0.1), rgba(0, 196, 117, 0.05)); padding: 80px 24px; text-align: center;">
+        <div class="max-w-4xl mx-auto fade-in">
+            <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px; color: #fafafa;">准备好体验 AI 自主编码了吗？</h2>
+            <p style="font-size: 1.125rem; color: #a1a1aa; margin-bottom: 40px;">加入数千名开发者，让 KleinBot 成为您的 AI 编程助手</p>
+            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+                <a href="https://github.com/kleinbot/kleinbot" target="_blank" class="btn-primary">
+                    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    Star on GitHub
+                </a>
+                <a href="#quickstart" class="btn-secondary">立即开始使用 →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="background: #0f0f0f; border-top: 1px solid #27272a; padding: 60px 24px 30px;">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                        <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #00DC82, #00c475); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #0f0f0f;">K</div>
+                        <span style="font-weight: 700; font-size: 18px; color: #fafafa;">Klein.Bot</span>
+                    </div>
+                    <p style="color: #71717a; line-height: 1.6; font-size: 14px;">AI 驱动的自主编码代理，让软件开发更高效。</p>
+                </div>
+
+                <div>
+                    <h4 style="font-weight: 600; color: #fafafa; margin-bottom: 16px;">产品</h4>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 8px;"><a href="#features" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">功能特性</a></li>
+                        <li style="margin-bottom: 8px;"><a href="#versions" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">版本介绍</a></li>
+                        <li style="margin-bottom: 8px;"><a href="#models" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">支持模型</a></li>
+                        <li style="margin-bottom: 8px;"><a href="#mcp" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">MCP 扩展</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 style="font-weight: 600; color: #fafafa; margin-bottom: 16px;">资源</h4>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 8px;"><a href="#" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">官方文档</a></li>
+                        <li style="margin-bottom: 8px;"><a href="/kleinbot-用户手册-CLI.md" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">kleinbot-用户手册-CLI</a></li>
+                        <li style="margin-bottom: 8px;"><a href="/kleinbot-用户手册-VSIX.md" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">kleinbot-用户手册-VSIX</a></li>
+                        <li style="margin-bottom: 8px;"><a href="https://github.com/kleinbot/kleinbot" target="_blank" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">GitHub</a></li>
+                        <li style="margin-bottom: 8px;"><a href="#" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">更新日志</a></li>
+                        <li style="margin-bottom: 8px;"><a href="#faq" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">常见问题</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 style="font-weight: 600; color: #fafafa; margin-bottom: 16px;">社区</h4>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 8px;"><a href="#" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">Discord 社区</a></li>
+                        <li style="margin-bottom: 8px;"><a href="https://Klein.Bot" target="_blank" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">官方网站</a></li>
+                        <li style="margin-bottom: 8px;"><a href="#" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">Twitter / X</a></li>
+                        <li style="margin-bottom: 8px;"><a href="#" style="color: #71717a; text-decoration: none; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">贡献指南</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid #27272a; padding-top: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <p style="color: #71717a; font-size: 14px;">© 2026 Klein.Bot. All rights reserved.</p>
+                <div style="display: flex; gap: 16px;">
+                    <a href="https://github.com/kleinbot/kleinbot" target="_blank" style="color: #71717a; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">
+                        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                    </a>
+                    <a href="#" style="color: #71717a; transition: color 0.3s;" onmouseover="this.style.color='#00DC82'" onmouseout="this.style.color='#71717a'">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.034.034 0 0 1 .008-.018.077.077 0 0 1 .077.007c.12.156.248.315.372.467a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back to Top Button -->
+    <button id="backToTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" style="position: fixed; bottom: 30px; right: 30px; width: 48px; height: 48px; border-radius: 50%; background: #00DC82; color: #0f0f0f; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 12px rgba(0, 220, 130, 0.3); transition: all 0.3s ease; z-index: 1000;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+        ↑
+    </button>
+
+    <script>
+        // Navbar scroll effect
+        window.addEventListener('scroll', function() {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.style.borderBottom = '1px solid #27272a';
+            } else {
+                navbar.style.borderBottom = '1px solid transparent';
+            }
+
+            // Back to top button
+            const backToTop = document.getElementById('backToTop');
+            if (window.scrollY > 500) {
+                backToTop.style.display = 'flex';
+            } else {
+                backToTop.style.display = 'none';
+            }
+        });
+
+        // Fade in animation
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Trigger initial visible elements
+        setTimeout(() => {
+            document.querySelectorAll('.fade-in').forEach(el => {
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight) {
+                    el.classList.add('visible');
+                }
+            });
+        }, 100);
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
